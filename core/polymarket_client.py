@@ -162,6 +162,7 @@ class PolymarketClient:
                 self.logger.info(f"[DEBUG] 第一个市场的 keys: {list(sample.keys())[:15]}")
                 self.logger.info(f"[DEBUG] 第一个市场 active={sample.get('active')} closed={sample.get('closed')} archived={sample.get('archived')}")
                 self.logger.info(f"[DEBUG] 第一个市场 outcomes={sample.get('outcomes')} clobTokenIds={sample.get('clobTokenIds')}")
+                self.logger.info(f"[DEBUG] 第一个市场 outcomePrices={sample.get('outcomePrices')} volume={sample.get('volume')} endDate={sample.get('endDate')}")
         
         results = []
         now = datetime.now(timezone.utc)
@@ -203,7 +204,19 @@ class PolymarketClient:
             no_token = clob_tokens[1]
             
             # 优先从 Gamma API 的 outcomePrices 获取价格（无需额外请求）
-            outcome_prices = m.get("outcomePrices", [])
+            # outcomePrices 可能是字符串 "[0.65, 0.35]" 或数组 [0.65, 0.35]
+            import json
+            outcome_prices_raw = m.get("outcomePrices", [])
+            outcome_prices = []
+            
+            if isinstance(outcome_prices_raw, str):
+                try:
+                    outcome_prices = json.loads(outcome_prices_raw)
+                except json.JSONDecodeError:
+                    outcome_prices = []
+            elif isinstance(outcome_prices_raw, list):
+                outcome_prices = outcome_prices_raw
+            
             if outcome_prices and len(outcome_prices) >= 2:
                 try:
                     yes_price = float(outcome_prices[0])
