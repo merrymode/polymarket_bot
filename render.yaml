@@ -1,0 +1,67 @@
+# Render Blueprint
+# 部署说明：把本文件提交到 GitHub 后，在 Render 上点击 "New +" → "Blueprint"
+# 选择你的仓库，Render 会自动读取本文件创建服务
+
+services:
+  # ============================================================
+  # Polymarket 交易 Bot - 后台持续运行
+  # ============================================================
+  - type: worker
+    name: polymarket-bot
+    runtime: python
+    plan: free  # 免费套餐：512MB RAM，24/7 运行，每月750小时
+    region: singapore  # 离中国最近：singapore 或 oregon
+    
+    # 构建命令
+    buildCommand: pip install -r requirements.txt
+    
+    # 启动命令
+    startCommand: python main.py
+    
+    # 环境变量（敏感信息不要在代码里写，在 Render Dashboard 里配置）
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      
+      - key: DRY_RUN
+        value: "true"  # 默认模拟模式，确认无误后改 false
+      
+      # 以下敏感变量请在 Render Dashboard → Environment 中手动添加
+      # 不要提交到 Git！
+      - key: POLYMARKET_PRIVATE_KEY
+        sync: false
+      
+      - key: POLYMARKET_FUNDER_ADDRESS
+        sync: false
+      
+      - key: POLYMARKET_SIGNATURE_TYPE
+        sync: false
+        value: "0"
+      
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+
+  # ============================================================
+  # （可选）纯扫描通知 Worker
+  # 如果你只想让 Render 扫描并推送到 Telegram，不自动交易
+  # 可以取消下面这段注释
+  # ============================================================
+  # - type: worker
+  #   name: polymarket-scanner
+  #   runtime: python
+  #   plan: free
+  #   region: singapore
+  #   buildCommand: pip install -r requirements.txt
+  #   startCommand: python main.py --test && python -c "import time; time.sleep(3600)"
+  #   # 上面这条命令：扫描一次，然后休眠1小时，循环
+  #   # 实际上更适合用 Cron Job，但 Render 免费没有 Cron Job
+  #   envVars:
+  #     - key: PYTHON_VERSION
+  #       value: "3.11"
+  #     - key: TELEGRAM_BOT_TOKEN
+  #       sync: false
+  #     - key: TELEGRAM_CHAT_ID
+  #       sync: false

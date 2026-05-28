@@ -1,0 +1,107 @@
+# Polymarket 自动交易系统配置
+
+# ==================== 交易模式 ====================
+trading:
+  # DRY_RUN=true: 模拟交易，不花真钱
+  # DRY_RUN=false: 实盘交易（请确认你清楚风险）
+  dry_run: true
+  
+  # 系统运行间隔（秒）
+  scan_interval: 10
+  
+  # 单次扫描最大市场数
+  max_markets_per_scan: 50
+  
+  # 允许同时持仓的最大市场数
+  max_open_positions: 5
+
+# ==================== 风控设置 ====================
+risk:
+  # 单笔交易最大投入（USDC）
+  max_trade_size: 50
+  
+  # 单笔交易最小投入（USDC）
+  min_trade_size: 5
+  
+  # 每日最大亏损（USDC），达到后停止交易
+  max_daily_loss: 200
+  
+  # 每日最大交易次数
+  max_daily_trades: 20
+  
+  # 滑点容忍度（如 0.02 = 2%）
+  slippage_tolerance: 0.02
+  
+  # 单笔止损比例（相对于入场价）
+  stop_loss_pct: 0.10
+
+# ==================== 策略配置 ====================
+strategy:
+  # 当前激活的策略
+  # 可选: simple_arbitrage | no_value_hunter | clueless_tailwind
+  # 推荐:
+  #   - clueless_tailwind: 什么都不懂，只赚尾盘时间收敛的钱
+  #   - no_value_hunter: 懂某个领域，赚认知偏差的钱
+  active: clueless_tailwind
+  
+  # ===========================
+  # 策略A: 简单套利（已被Bot垄断，不推荐）
+  # ===========================
+  simple_arbitrage:
+    threshold: 0.02
+    min_apy_pct: 20
+    categories: []
+    min_volume: 1000
+    max_days_to_resolution: 30
+
+  # ===========================
+  # 策略B: NO价值猎人 + 尾盘捡漏（需要懂某个领域）
+  # ===========================
+  no_value_hunter:
+    no_max_price: 0.20
+    no_min_edge: 0.08
+    tailwind_hours: 48
+    min_confidence: 0.70
+    categories: []
+    min_volume: 300
+
+  # ===========================
+  # 策略C: 零基础尾盘（什么都不懂也能搞）
+  # ===========================
+  clueless_tailwind:
+    # 结算前N小时内才参与（越短确定性越高）
+    max_hours_before_close: 6
+    
+    # 最低确定性：只买定价 > 92% 的结果
+    # 92% = 市场认为"几乎确定"，但还有8%利润空间
+    min_certainty: 0.92
+    
+    # 最高买入价：避免定价太高（如99%只剩1%利润，不值得）
+    max_entry_price: 0.96
+    
+    # 最小利润空间：至少赚5%才出手
+    profit_target: 0.05
+    
+    # 最小交易量过滤
+    min_volume: 1000
+
+# ==================== API 配置 ====================
+api:
+  # Gamma API 端点
+  gamma_host: https://gamma-api.polymarket.com
+  
+  # CLOB API 端点
+  clob_host: https://clob.polymarket.com
+  
+  # 请求超时（秒）
+  timeout: 15
+  
+  # REST API 请求间隔（秒，避免触发限流）
+  request_interval: 1
+
+# ==================== 日志配置 ====================
+logging:
+  level: INFO
+  file: logs/trading.log
+  max_file_size_mb: 10
+  backup_count: 5

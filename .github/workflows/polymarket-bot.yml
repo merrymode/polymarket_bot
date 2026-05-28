@@ -1,0 +1,110 @@
+name: Polymarket Auto Trader
+
+# ============================================================
+# 说明：
+# 本工作流每 5 分钟运行一次，自动扫描 Polymarket 尾盘机会
+# 
+# 适用策略：clueless_tailwind（尾盘捡漏）
+# 不适合：毫秒级套利、高频做市
+# 
+# 免费额度：
+# - 公开仓库：GitHub Actions 免费无限制！
+# - 私有仓库：每月 2000 分钟（约 666 次 3 分钟运行）
+# ============================================================
+
+on:
+  schedule:
+    # 每 5 分钟运行一次（cron 最短间隔）
+    # 如果市场不活跃，可改为 10 分钟或 15 分钟节省资源
+    - cron: '*/5 * * * *'
+  
+  # 允许手动触发（测试用）
+  workflow_dispatch:
+
+# 防止同时运行多个实例
+concurrency:
+  group: polymarket-bot
+  cancel-in-progress: false
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      # ============================================================
+      # 模拟模式（默认）：只扫描、记录日志，不花真钱
+      # ============================================================
+      - name: Run Paper Trading Scan
+        if: env.DRY_RUN != 'false'
+        env:
+          # 模拟模式不需要私钥
+          DRY_RUN: 'true'
+        run: |
+          echo "🧪 模拟模式：扫描市场机会（不交易）"
+          python main.py --test > scan_result.txt 2>&1 || true
+          cat scan_result.txt
+      
+      # ============================================================
+      # 实盘模式（需要配置 Secrets）
+      # ============================================================
+      - name: Run Live Trading
+        if: env.DRY_RUN == 'false'
+        env:
+          DRY_RUN: 'false'
+          POLYMARKET_PRIVATE_KEY: ${{ secrets.POLYMARKET_PRIVATE_KEY }}
+          POLYMARKET_FUNDER_ADDRESS: ${{ secrets.POLYMARKET_FUNDER_ADDRESS }}
+          POLYMARKET_SIGNATURE_TYPE: ${{ secrets.POLYMARKET_SIGNATURE_TYPE }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          echo "🚨 实盘模式：将使用真实资金交易"
+          echo "   地址: ${{ secrets.POLYMARKET_FUNDER_ADDRESS }}"
+          
+          # 设置超时，防止 workflow 一直挂起
+          timeout 180 python main.py > trade_result.txt 2>&1 || true
+          cat trade_result.txt
+      
+      # ============================================================
+      # 保存扫描结果到 Artifact（方便查看历史）
+      # ============================================================
+      - name: Upload scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-results-${{ github.run_id }}
+          path: |
+            scan_result.txt
+            trade_result.txt
+            logs/*.log
+            logs/*.json
+          retention-days: 7
+      
+      # ============================================================
+      # Telegram 通知（可选）
+      # ============================================================
+      - name: Send Telegram notification
+        if: env.TELEGRAM_BOT_TOKEN != '' && always()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -f scan_result.txt ]; then
+            MESSAGE="📊 Polymarket 扫描完成\\n\\n$(tail -20 scan_result.txt | sed 's/"/\\"/g')"
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_CHAT_ID}" \
+              -d "text=${MESSAGE}" \
+              -d "parse_mode=Markdown" || true
+          fi

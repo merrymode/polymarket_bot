@@ -1,0 +1,68 @@
+name: Polymarket Market Scanner
+
+# ============================================================
+# 纯扫描模式：只查看市场机会，不执行任何交易
+# 
+# 用途：
+# - 每天定时查看有哪些尾盘机会
+# - 推送到手机，你手动决定是否交易
+# - 零风险，只观察
+# ============================================================
+
+on:
+  schedule:
+    # 每小时运行一次（适合观察）
+    - cron: '0 * * * *'
+  
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Scan markets
+        run: |
+          echo "🔍 扫描 Polymarket 尾盘机会..."
+          python main.py --test > scan_result.txt 2>&1 || true
+          cat scan_result.txt
+      
+      # 推送扫描结果到 Telegram
+      - name: Notify via Telegram
+        if: env.TELEGRAM_BOT_TOKEN != '' && always()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -f scan_result.txt ]; then
+            # 提取关键信息
+            OPPORTUNITIES=$(grep -c "【尾盘" scan_result.txt || echo "0")
+            SUMMARY=$(tail -30 scan_result.txt | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+            
+            MESSAGE="🔍 Polymarket 市场扫描\\n发现 ${OPPORTUNITIES} 个尾盘机会\\n\\n\${SUMMARY}"
+            
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_CHAT_ID}" \
+              -d "text=${MESSAGE}" \
+              -d "parse_mode=Markdown" || true
+          fi
+      
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-only-${{ github.run_id }}
+          path: scan_result.txt
+          retention-days: 3
