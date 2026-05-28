@@ -154,11 +154,21 @@ class PolymarketClient:
         """
         markets_raw = self.gamma.get_markets(active=True, closed=False, limit=limit)
         
+        # 调试日志
+        if self.logger:
+            self.logger.info(f"[DEBUG] Gamma API 返回 {len(markets_raw)} 个原始市场")
+            if markets_raw:
+                sample = markets_raw[0]
+                self.logger.info(f"[DEBUG] 第一个市场的 keys: {list(sample.keys())[:15]}")
+                self.logger.info(f"[DEBUG] 第一个市场 active={sample.get('active')} closed={sample.get('closed')} archived={sample.get('archived')}")
+                self.logger.info(f"[DEBUG] 第一个市场 outcomes={sample.get('outcomes')} clobTokenIds={sample.get('clobTokenIds')}")
+        
         results = []
         now = datetime.now(timezone.utc)
         
         for m in markets_raw:
-            if not m.get("active", True) or m.get("closed", False):
+            # 放宽 active/closed 检查，有些市场可能没有这些字段
+            if m.get("archived") is True:
                 continue
             
             outcomes = m.get("outcomes", [])
