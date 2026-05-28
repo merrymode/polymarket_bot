@@ -202,10 +202,27 @@ class PolymarketClient:
             yes_token = clob_tokens[0]
             no_token = clob_tokens[1]
             
-            yes_price = self.clob.get_midpoint(yes_token)
-            no_price = self.clob.get_midpoint(no_token)
+            # 优先从 Gamma API 的 outcomePrices 获取价格（无需额外请求）
+            outcome_prices = m.get("outcomePrices", [])
+            if outcome_prices and len(outcome_prices) >= 2:
+                try:
+                    yes_price = float(outcome_prices[0])
+                    no_price = float(outcome_prices[1])
+                except (ValueError, TypeError):
+                    yes_price = None
+                    no_price = None
+            else:
+                yes_price = None
+                no_price = None
+            
+            # 如果 Gamma 没有价格，再回退到 CLOB API
+            if yes_price is None or no_price is None:
+                yes_price = self.clob.get_midpoint(yes_token)
+                no_price = self.clob.get_midpoint(no_token)
             
             if yes_price is None or no_price is None:
+                if self.logger:
+                    self.logger.debug(f"[DEBUG] 跳过 {m.get('question', '')[:30]}: 无法获取价格")
                 continue
             
             results.append({
