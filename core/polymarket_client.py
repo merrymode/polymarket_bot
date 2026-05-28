@@ -176,7 +176,17 @@ class PolymarketClient:
                 skip_reasons['archived'] = skip_reasons.get('archived', 0) + 1
                 continue
             
-            outcomes = m.get("outcomes", [])
+            # outcomes 可能是 JSON 字符串 "[\"Yes\", \"No\"]" 或数组
+            outcomes_raw = m.get("outcomes", [])
+            if isinstance(outcomes_raw, str):
+                try:
+                    outcomes = json.loads(outcomes_raw)
+                except json.JSONDecodeError:
+                    outcomes = []
+            elif isinstance(outcomes_raw, list):
+                outcomes = outcomes_raw
+            else:
+                outcomes = []
             if len(outcomes) != 2:
                 skip_reasons['not_binary'] = skip_reasons.get('not_binary', 0) + 1
                 continue
@@ -213,7 +223,17 @@ class PolymarketClient:
                 skip_reasons['no_date'] = skip_reasons.get('no_date', 0) + 1
                 continue
             
-            clob_tokens = m.get("clobTokenIds", [])
+            # clobTokenIds 也可能是 JSON 字符串
+            clob_raw = m.get("clobTokenIds", [])
+            if isinstance(clob_raw, str):
+                try:
+                    clob_tokens = json.loads(clob_raw)
+                except json.JSONDecodeError:
+                    clob_tokens = []
+            elif isinstance(clob_raw, list):
+                clob_tokens = clob_raw
+            else:
+                clob_tokens = []
             if not clob_tokens or len(clob_tokens) < 2:
                 skip_reasons['no_tokens'] = skip_reasons.get('no_tokens', 0) + 1
                 continue
