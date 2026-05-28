@@ -31,6 +31,7 @@ from core.execution_engine import ExecutionEngine
 from strategies.simple_arbitrage import SimpleArbitrageStrategy
 from strategies.no_value_hunter import NoValueHunterStrategy
 from strategies.clueless_tailwind import CluelessTailwindStrategy
+from strategies.multi_market_rotator import MultiMarketRotator
 from utils.logger import setup_logger
 
 
@@ -108,6 +109,10 @@ class TradingBot:
         elif active_strategy_name == "clueless_tailwind":
             self.strategy = CluelessTailwindStrategy(
                 strategy_config.get("clueless_tailwind", {})
+            )
+        elif active_strategy_name == "multi_market_rotator":
+            self.strategy = MultiMarketRotator(
+                strategy_config.get("multi_market_rotator", {})
             )
         else:
             self.logger.error(f"未知策略: {active_strategy_name}")

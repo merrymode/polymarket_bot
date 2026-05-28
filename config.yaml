@@ -38,11 +38,12 @@ risk:
 # ==================== 策略配置 ====================
 strategy:
   # 当前激活的策略
-  # 可选: simple_arbitrage | no_value_hunter | clueless_tailwind
+  # 可选: simple_arbitrage | no_value_hunter | clueless_tailwind | multi_market_rotator
   # 推荐:
+  #   - multi_market_rotator: 小资金首选，多市场尾盘轮换，资金利用率高
   #   - clueless_tailwind: 什么都不懂，只赚尾盘时间收敛的钱
   #   - no_value_hunter: 懂某个领域，赚认知偏差的钱
-  active: clueless_tailwind
+  active: multi_market_rotator
   
   # ===========================
   # 策略A: 简单套利（已被Bot垄断，不推荐）
@@ -77,22 +78,25 @@ strategy:
   # 策略C: 零基础尾盘（什么都不懂也能搞）
   # ===========================
   clueless_tailwind:
-    # 结算前N小时内才参与
-    # 6小时 = 极严格，机会极少；168小时(7天) = 更宽松，机会更多
     max_hours_before_close: 168
-    
-    # 最低确定性：只买定价 > 90% 的结果
-    # 90% = 确定性仍很高，但比 92% 更容易找到机会
     min_certainty: 0.90
-    
-    # 最高买入价：避免定价太高（如99%只剩1%利润，不值得）
     max_entry_price: 0.96
-    
-    # 最小利润空间：至少赚5%才出手
     profit_target: 0.05
+    min_volume: 1000
+
+  # ===========================
+  # 策略D: 多市场尾盘轮换（小资金首选！）
+  # ===========================
+  multi_market_rotator:
+    # 最大结算等待时间（小时）
+    # 48小时 = 2天内结算，资金周转快
+    max_hours: 48
     
     # 最小交易量过滤
-    min_volume: 1000
+    min_volume: 500
+    
+    # 最小利润空间（至少赚3%）
+    profit_target: 0.03
 
 # ==================== API 配置 ====================
 api:
