@@ -2,6 +2,7 @@
 Polymarket API 客户端封装
 支持 Gamma API（公开市场数据）和 CLOB API（交易）
 """
+import json
 import time
 import requests
 from typing import Dict, List, Optional, Any
@@ -243,7 +244,6 @@ class PolymarketClient:
             
             # 优先从 Gamma API 的 outcomePrices 获取价格（无需额外请求）
             # outcomePrices 可能是字符串 "[0.65, 0.35]" 或数组 [0.65, 0.35]
-            import json
             outcome_prices_raw = m.get("outcomePrices", [])
             outcome_prices = []
             
