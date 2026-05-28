@@ -41,9 +41,7 @@ class GammaAPIClient:
             "active": str(active).lower(),
             "closed": str(closed).lower(),
             "limit": limit,
-            "offset": offset,
-            "sort": "volume",
-            "order": "desc"
+            "offset": offset
         }
         if category:
             params["tag"] = category
