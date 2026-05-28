@@ -130,9 +130,9 @@ class TradingBot:
         scan_interval = self.config.get("trading", {}).get("scan_interval", 10)
         max_markets = self.config.get("trading", {}).get("max_markets_per_scan", 50)
         
-        strategy_cfg = self.config.get("strategy", {}).get("simple_arbitrage", {})
+        strategy_cfg = self.config.get("strategy", {}).get(active_strategy_name, {})
         min_volume = strategy_cfg.get("min_volume", 1000)
-        max_days = strategy_cfg.get("max_days_to_resolution", 30)
+        max_days = strategy_cfg.get("max_days_to_resolution", 90)
         categories = strategy_cfg.get("categories", [])
         
         self.logger.info(f"扫描间隔: {scan_interval}秒 | 每次最多 {max_markets} 个市场")

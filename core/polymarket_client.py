@@ -166,23 +166,30 @@ class PolymarketClient:
         
         results = []
         now = datetime.now(timezone.utc)
+        skip_reasons = {}
         
         for m in markets_raw:
+            q = m.get('question', '')[:40]
+            
             # 放宽 active/closed 检查，有些市场可能没有这些字段
             if m.get("archived") is True:
+                skip_reasons['archived'] = skip_reasons.get('archived', 0) + 1
                 continue
             
             outcomes = m.get("outcomes", [])
             if len(outcomes) != 2:
+                skip_reasons['not_binary'] = skip_reasons.get('not_binary', 0) + 1
                 continue
             
             if categories:
                 tags = [t.lower() for t in m.get("tags", [])]
                 if not any(c.lower() in tags for c in categories):
+                    skip_reasons['category'] = skip_reasons.get('category', 0) + 1
                     continue
             
             volume = float(m.get("volume", 0) or 0)
             if volume < min_volume:
+                skip_reasons['low_volume'] = skip_reasons.get('low_volume', 0) + 1
                 continue
             
             end_date_raw = m.get("endDate") or m.get("resolutionDate")
@@ -191,13 +198,24 @@ class PolymarketClient:
                 try:
                     end_date = datetime.fromisoformat(end_date_raw.replace('Z', '+00:00'))
                     days_to_res = (end_date - now).days
-                    if days_to_res > max_days or days_to_res < 0:
+                    if days_to_res > max_days:
+                        skip_reasons['too_far'] = skip_reasons.get('too_far', 0) + 1
                         continue
-                except Exception:
-                    pass
+                    if days_to_res < 0:
+                        skip_reasons['expired'] = skip_reasons.get('expired', 0) + 1
+                        continue
+                except Exception as e:
+                    skip_reasons['bad_date'] = skip_reasons.get('bad_date', 0) + 1
+                    if self.logger:
+                        self.logger.debug(f"[DEBUG] 日期解析失败 {q}: {end_date_raw} -> {e}")
+                    continue
+            else:
+                skip_reasons['no_date'] = skip_reasons.get('no_date', 0) + 1
+                continue
             
             clob_tokens = m.get("clobTokenIds", [])
-            if len(clob_tokens) < 2:
+            if not clob_tokens or len(clob_tokens) < 2:
+                skip_reasons['no_tokens'] = skip_reasons.get('no_tokens', 0) + 1
                 continue
             
             yes_token = clob_tokens[0]
@@ -217,6 +235,8 @@ class PolymarketClient:
             elif isinstance(outcome_prices_raw, list):
                 outcome_prices = outcome_prices_raw
             
+            yes_price = None
+            no_price = None
             if outcome_prices and len(outcome_prices) >= 2:
                 try:
                     yes_price = float(outcome_prices[0])
@@ -224,9 +244,6 @@ class PolymarketClient:
                 except (ValueError, TypeError):
                     yes_price = None
                     no_price = None
-            else:
-                yes_price = None
-                no_price = None
             
             # 如果 Gamma 没有价格，再回退到 CLOB API
             if yes_price is None or no_price is None:
@@ -234,8 +251,9 @@ class PolymarketClient:
                 no_price = self.clob.get_midpoint(no_token)
             
             if yes_price is None or no_price is None:
+                skip_reasons['no_price'] = skip_reasons.get('no_price', 0) + 1
                 if self.logger:
-                    self.logger.debug(f"[DEBUG] 跳过 {m.get('question', '')[:30]}: 无法获取价格")
+                    self.logger.debug(f"[DEBUG] 跳过 {q}: 无法获取价格 (raw={outcome_prices_raw})")
                 continue
             
             results.append({
@@ -256,5 +274,8 @@ class PolymarketClient:
                 "liquidity": float(m.get("liquidity", 0) or 0),
                 "spread": abs(yes_price + no_price - 1.0)
             })
+        
+        if self.logger and skip_reasons:
+            self.logger.info(f"[DEBUG] 过滤统计: {skip_reasons}")
         
         return results
