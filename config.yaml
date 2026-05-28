@@ -52,7 +52,15 @@ strategy:
     min_apy_pct: 20
     categories: []
     min_volume: 1000
-    max_days_to_resolution: 30
+    max_days_to_resolution: 90
+
+  no_value_hunter:
+    no_max_price: 0.20
+    no_min_edge: 0.08
+    tailwind_hours: 48
+    min_confidence: 0.70
+    categories: []
+    min_volume: 300
 
   # ===========================
   # 策略B: NO价值猎人 + 尾盘捡漏（需要懂某个领域）
@@ -69,12 +77,13 @@ strategy:
   # 策略C: 零基础尾盘（什么都不懂也能搞）
   # ===========================
   clueless_tailwind:
-    # 结算前N小时内才参与（越短确定性越高）
-    max_hours_before_close: 6
+    # 结算前N小时内才参与
+    # 6小时 = 极严格，机会极少；168小时(7天) = 更宽松，机会更多
+    max_hours_before_close: 168
     
-    # 最低确定性：只买定价 > 92% 的结果
-    # 92% = 市场认为"几乎确定"，但还有8%利润空间
-    min_certainty: 0.92
+    # 最低确定性：只买定价 > 90% 的结果
+    # 90% = 确定性仍很高，但比 92% 更容易找到机会
+    min_certainty: 0.90
     
     # 最高买入价：避免定价太高（如99%只剩1%利润，不值得）
     max_entry_price: 0.96
