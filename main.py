@@ -96,26 +96,26 @@ class TradingBot:
         
         # 策略
         strategy_config = self.config.get("strategy", {})
-        active_strategy_name = strategy_config.get("active", "simple_arbitrage")
+        self.active_strategy_name = strategy_config.get("active", "simple_arbitrage")
         
-        if active_strategy_name == "simple_arbitrage":
+        if self.active_strategy_name == "simple_arbitrage":
             self.strategy = SimpleArbitrageStrategy(
                 strategy_config.get("simple_arbitrage", {})
             )
-        elif active_strategy_name == "no_value_hunter":
+        elif self.active_strategy_name == "no_value_hunter":
             self.strategy = NoValueHunterStrategy(
                 strategy_config.get("no_value_hunter", {})
             )
-        elif active_strategy_name == "clueless_tailwind":
+        elif self.active_strategy_name == "clueless_tailwind":
             self.strategy = CluelessTailwindStrategy(
                 strategy_config.get("clueless_tailwind", {})
             )
-        elif active_strategy_name == "multi_market_rotator":
+        elif self.active_strategy_name == "multi_market_rotator":
             self.strategy = MultiMarketRotator(
                 strategy_config.get("multi_market_rotator", {})
             )
         else:
-            self.logger.error(f"未知策略: {active_strategy_name}")
+            self.logger.error(f"未知策略: {self.active_strategy_name}")
             sys.exit(1)
         
         self.logger.info(f"策略加载: {self.strategy.name} - {self.strategy.description}")
@@ -130,7 +130,7 @@ class TradingBot:
         scan_interval = self.config.get("trading", {}).get("scan_interval", 10)
         max_markets = self.config.get("trading", {}).get("max_markets_per_scan", 50)
         
-        strategy_cfg = self.config.get("strategy", {}).get(active_strategy_name, {})
+        strategy_cfg = self.config.get("strategy", {}).get(self.active_strategy_name, {})
         min_volume = strategy_cfg.get("min_volume", 1000)
         max_days = strategy_cfg.get("max_days_to_resolution", 90)
         categories = strategy_cfg.get("categories", [])
